@@ -4,9 +4,38 @@
 
 @layer base {
   body {
-    height: 100vh;
-    background-color: rgb(31 41 55);
-    color: #fff;
-    padding: 0 32px;
+    min-height: 100vh;
+    background-color: #f4f4f5;
+    color: #18181b;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    letter-spacing: 0;
+  }
+}
+
+@layer components {
+  .icon-button {
+    @apply inline-grid h-8 w-8 shrink-0 place-items-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .data-table {
+    @apply w-full min-w-[720px] border-collapse text-left text-sm;
+  }
+
+  .data-table th {
+    @apply border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase text-zinc-500;
+  }
+
+  .data-table td {
+    @apply border-b border-zinc-100 px-4 py-3 align-middle text-zinc-700;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-zinc-50;
   }
 }

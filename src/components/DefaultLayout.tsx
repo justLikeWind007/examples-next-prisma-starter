@@ -7,11 +7,11 @@ export const DefaultLayout = ({ children }: DefaultLayoutProps) => {
   return (
     <>
       <Head>
-        <title>Prisma Starter</title>
+        <title>权限控制台</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="h-screen">{children}</main>
+      <main className="min-h-screen">{children}</main>
     </>
   );
 };
