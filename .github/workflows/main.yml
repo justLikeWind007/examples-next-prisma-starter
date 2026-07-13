@@ -1,102 +1,75 @@
-name: Testing
-on: [push]
+name: Permission admin verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
-  e2e:
-    name: 'Build + E2E tests'
+  verify:
+    runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres
+        image: postgres:16
         env:
-          POSTGRES_DATABASE: trpcdb
+          POSTGRES_DB: permission_admin
           POSTGRES_USER: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_PASSWORD: training
         ports:
           - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d permission_admin"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
+      CI: true
       NODE_ENV: test
-      NEXTAUTH_SECRET: supersecret
-    runs-on: ubuntu-latest
+      DATABASE_URL: postgresql://postgres:training@127.0.0.1:5432/permission_admin?schema=public
+      BETTER_AUTH_SECRET: permission-admin-ci-secret-at-least-32-characters
+      BETTER_AUTH_URL: http://localhost:3000
+      PLAYWRIGHT_HEADLESS: 1
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: 22
+          cache: pnpm
 
-      - uses: pnpm/action-setup@v5
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - uses: actions/setup-node@v3
+      - name: Apply database migrations
+        run: pnpm migrate
+
+      - name: Run interface tests
+        run: pnpm test:run
+
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Check TypeScript
+        run: pnpm typecheck
+
+      - name: Build production application
+        run: pnpm build
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser acceptance tests
+        run: pnpm test-e2e
+
+      - name: Upload Playwright evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 22.x
-          cache: 'pnpm' # You can active this cache when your repo has a lockfile
-
-      - name: Install deps (with cache)
-        run: pnpm install
-
-      - name: Install playwright
-        run: pnpm exec playwright install chromium
-
-      - name: Next.js cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-nextjs
-
-      - name: Setup Prisma
-        run: pnpm prebuild
-
-      - run: pnpm build
-      - run: pnpm test-e2e
-
-      - name: Check types
-        run: pnpm tsc
-
-      - name: Upload test results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: test results
-          path: |
-            playwright/test-results
-
-  unit:
-    name: 'Unit tests + typecheck'
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DATABASE: trpcdb
-          POSTGRES_USER: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
-        ports:
-          - 5432:5432
-    env:
-      NODE_ENV: test
-      NEXTAUTH_SECRET: supersecret
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: pnpm/action-setup@v5
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 22.x
-          cache: 'pnpm' # You can active this cache when your repo has a lockfile
-
-      - name: Install deps (with cache)
-        run: pnpm install
-
-      - name: Next.js cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}-nextjs
-
-      - name: Setup Prisma
-        run: pnpm prebuild
-
-      - run: pnpm test-unit
-      - run: pnpm tsc
+          name: playwright-results
+          path: playwright/test-results
+          if-no-files-found: ignore
